@@ -14,7 +14,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         for (int i = 0; i < 20; i++) {
-            data.add(i+"");
+            data.add(""+i);
         }
         wcv= (WheelChooseView) findViewById(R.id.wcv);
         wcv.setDataList(data);
