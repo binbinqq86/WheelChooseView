@@ -14,6 +14,7 @@ import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.MotionEvent;
 import android.view.View;
 
 import java.util.ArrayList;
@@ -21,7 +22,7 @@ import java.util.List;
 
 /**
  * Created by : tb on 2017/8/4 上午9:49.
- * Description :仿IOS滚轮选择控件
+ * Description :高仿IOS滚轮选择控件
  */
 public class WheelChooseView extends View {
     private static final String TAG = "WheelChooseView";
@@ -34,7 +35,7 @@ public class WheelChooseView extends View {
     /**
      * 当前选中位置，默认选中第一个
      */
-    private int currIndex = 5;
+    private int currIndex;
     /**
      * 最大显示数据个数，默认5个
      */
@@ -134,9 +135,7 @@ public class WheelChooseView extends View {
         camera = new Camera();
         matrix = new Matrix();
         
-        if (maxShowNum % 2 == 0) {
-            throw new IllegalArgumentException("=====maxShowNum can't be even number======");
-        }
+        currIndex = maxShowNum / 2;
     }
     
     @Override
@@ -261,6 +260,20 @@ public class WheelChooseView extends View {
         }
     }
     
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        switch (event.getAction()){
+            case MotionEvent.ACTION_DOWN:
+                break;
+            case MotionEvent.ACTION_MOVE:
+                break;
+            case MotionEvent.ACTION_UP:
+            default:
+                break;
+        }
+        return true;
+    }
+    
     /**
      * 计算实际绘制区域的高度，即所有文本的总高度
      */
@@ -324,6 +337,7 @@ public class WheelChooseView extends View {
     
     /**
      * 只支持奇数
+     *
      * @param maxShowNum
      * @return
      */
