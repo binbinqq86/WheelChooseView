@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.os.Build;
+import android.support.annotation.ColorInt;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.text.TextPaint;
@@ -37,7 +38,7 @@ public class WheelChooseView extends View {
     /**
      * 最大显示数据个数，默认5个
      */
-    private int maxShowNum = 3;
+    private int maxShowNum = 5;
     /**
      * 是否是循环滚动模式
      */
@@ -86,9 +87,9 @@ public class WheelChooseView extends View {
     private Camera camera;
     private Matrix matrix;
     /**
-     * 控件的中心坐标
+     * 每个文本的中心坐标
      */
-    private float centerY, centerX;
+    private float centerX;
     /**
      * 画分割线的paint
      */
@@ -144,7 +145,6 @@ public class WheelChooseView extends View {
         width = getMeasuredWidth();
         height = getMeasuredHeight();
         centerX = width / 2f;
-        centerY = height / 2f;
     }
     
     /**
@@ -175,11 +175,11 @@ public class WheelChooseView extends View {
         int size = dataList.size();
         int center = maxShowNum / 2;
         float eachCenterYPre = 0f;
-        float eachCenterYCurr;
+        float eachCenterYCurr = 0f;
+        float centerYPre = 0f;
         TextPaint textPaintPre = new TextPaint(textPaint);
         for (int i = -center; i <= center; i++) {
             //开始绘制文本=====================================
-            
             //区分中间跟边缘文本的颜色
             if (i == 0) {
                 textPaint.setColor(centerTextColor);
@@ -198,25 +198,6 @@ public class WheelChooseView extends View {
 //            Log.e(TAG, "onDraw: " + tempScaleAlpha + "$" + tempScalePadding + "$" + tempScaleSize + "$" + tempScaleRotateDegree);
             textPaint.setTextSize(tempScaleSize);
             textPaint.setAlpha((int) tempScaleAlpha);
-
-            matrix.reset();
-            camera.save();
-            camera.rotateX(tempScaleRotateDegree);
-            camera.getMatrix(matrix);
-            camera.restore();
-    
-            //修正失真，主要修改 MPERSP_0 和 MPERSP_1
-            float[] mValues = new float[9];
-            matrix.getValues(mValues);//获取数值
-            mValues[6] = mValues[6] / getResources().getDisplayMetrics().density;//数值修正
-            mValues[7] = mValues[7] / getResources().getDisplayMetrics().density;//数值修正
-            matrix.setValues(mValues);//重新赋值
-            
-            // 调节中心点
-            matrix.preTranslate(-centerX, -centerY);
-            matrix.postTranslate(centerX, centerY);
-            
-            canvas.concat(matrix);
             
             //=======================计算baseLine===============================
             float tempScalePaddingPre = centerTextPadding - Math.abs(i - 1) * (centerTextPadding - centerTextPadding / scaleTextPadding) / (maxShowNum / 2);
@@ -236,14 +217,37 @@ public class WheelChooseView extends View {
             
             if (i == -center) {
                 eachCenterYPre = (height - contentHeight) / 2f + tempScalePadding + fontHeight / 2f;
+//                Log.e(TAG, "onDraw: " + eachCenterYPre + "#" + eachCenterYCurr);
                 eachCenterYCurr = eachCenterYPre;
             } else {
                 eachCenterYCurr = eachCenterYPre + tempScalePaddingPre + fontHeightPre / 2f + tempScalePadding + fontHeight / 2f;
+//                Log.e(TAG, "onDraw: " + eachCenterYPre + "#" + eachCenterYCurr);
                 eachCenterYPre = eachCenterYCurr;
             }
             //baseLine计算参考：http://blog.csdn.net/harvic880925/article/details/50423762
             float baseline = eachCenterYCurr + (fontMetrics.bottom - fontMetrics.top) / 2f - fontMetrics.bottom;
+            
+            canvas.save();
+            matrix.reset();
+            camera.save();
+            camera.rotateX(tempScaleRotateDegree);
+            camera.getMatrix(matrix);
+            camera.restore();
+            
+            //修正失真，主要修改 MPERSP_0 和 MPERSP_1
+            float[] mValues = new float[9];
+            matrix.getValues(mValues);//获取数值
+            mValues[6] = mValues[6] / getResources().getDisplayMetrics().density;//数值修正
+            mValues[7] = mValues[7] / getResources().getDisplayMetrics().density;//数值修正
+            matrix.setValues(mValues);//重新赋值
+            
+            //调节中心点，每个文本各自的中心点
+            matrix.preTranslate(-centerX, -eachCenterYCurr);
+            matrix.postTranslate(centerX, eachCenterYCurr);
+            
+            canvas.concat(matrix);
             canvas.drawText(text, width / 2, baseline, textPaint);
+            canvas.restore();
         }
         //绘制分割线
         if (hasSeparateLine) {
@@ -257,6 +261,9 @@ public class WheelChooseView extends View {
         }
     }
     
+    /**
+     * 计算实际绘制区域的高度，即所有文本的总高度
+     */
     private void calculateContentHeight() {
         int center = maxShowNum / 2;
         TextPaint tp = new TextPaint();
@@ -304,6 +311,9 @@ public class WheelChooseView extends View {
     }
     
     public WheelChooseView setCurrIndex(int currIndex) {
+        if (currIndex < 0) {
+            currIndex = 0;
+        }
         this.currIndex = currIndex;
         return this;
     }
@@ -312,7 +322,15 @@ public class WheelChooseView extends View {
         return maxShowNum;
     }
     
+    /**
+     * 只支持奇数
+     * @param maxShowNum
+     * @return
+     */
     public WheelChooseView setMaxShowNum(int maxShowNum) {
+        if (maxShowNum % 2 == 0) {
+            throw new IllegalArgumentException("=====maxShowNum can't be even number======");
+        }
         this.maxShowNum = maxShowNum;
         return this;
     }
@@ -330,7 +348,7 @@ public class WheelChooseView extends View {
         return centerTextColor;
     }
     
-    public WheelChooseView setCenterTextColor(int centerTextColor) {
+    public WheelChooseView setCenterTextColor(@ColorInt int centerTextColor) {
         this.centerTextColor = centerTextColor;
         return this;
     }
@@ -339,7 +357,7 @@ public class WheelChooseView extends View {
         return otherTextColor;
     }
     
-    public WheelChooseView setOtherTextColor(int otherTextColor) {
+    public WheelChooseView setOtherTextColor(@ColorInt int otherTextColor) {
         this.otherTextColor = otherTextColor;
         return this;
     }
