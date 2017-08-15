@@ -93,6 +93,14 @@ public class WheelChooseView extends View {
      */
     private float[] eachTextPadding;
     /**
+     * 所有alpha集合
+     */
+    private float[] eachTextAlpha;
+    /**
+     * 所有rotate集合
+     */
+    private float[] eachTextRotate;
+    /**
      * 所有textHeight集合
      */
     private float[] eachTextHeight;
@@ -111,6 +119,22 @@ public class WheelChooseView extends View {
      * 是否绘制中间的分割线
      */
     private boolean hasSeparateLine = true;
+    /**
+     * 第一次按下的y坐标
+     */
+    private float mFirstY;
+    /**
+     * 偏移的y轴距离
+     */
+    private float offsetY;
+    /**
+     * 偏移的个数
+     */
+    private int offsetIndex;
+    /**
+     * 作为参考标准的
+     */
+    private float textHeight;
     
     public WheelChooseView(Context context) {
         this(context, null);
@@ -171,6 +195,8 @@ public class WheelChooseView extends View {
         eachTextPadding = new float[maxShowNum];
         eachTextSize = new float[maxShowNum];
         eachTextHeight = new float[maxShowNum];
+        eachTextAlpha = new float[maxShowNum];
+        eachTextRotate = new float[maxShowNum];
         calculateContentHeight();
         invalidate();
     }
@@ -205,22 +231,69 @@ public class WheelChooseView extends View {
             }
             
             //计算textPadding缩放等级，上下分别的padding，不是两者的和
-//            float tempScalePadding = centerTextPadding - Math.abs(i) * (centerTextPadding - centerTextPadding / scaleTextPadding) / center;
             float tempScalePadding = eachTextPadding[i + center];
             //计算textSize缩放等级
-//            float tempScaleSize = centerTextSize - Math.abs(i) * (centerTextSize - centerTextSize / scaleTextSize) / center;
             float tempScaleSize = eachTextSize[i + center];
             //计算textAlpha缩放等级
-            float tempScaleAlpha = 255f - Math.abs(i) * (255f - 255f / scaleTextAlpha) / center;
+            float tempScaleAlpha = eachTextAlpha[i + center];
             //计算绕x轴旋转的角度
-            float tempScaleRotateDegree = -DEFAULT_MAX_ROTATE_DEGREE * i / center;
+            float tempScaleRotateDegree = eachTextRotate[i + center];
 //            Log.e(TAG, "onDraw: " + tempScaleAlpha + "$" + tempScalePadding + "$" + tempScaleSize + "$" + tempScaleRotateDegree);
             
-//            float delta=Math.abs(offsetY)%eachTextHeight[i+center]/eachTextHeight[i+center];
-//            tempScalePadding-=tempScalePadding*delta;
-//            tempScaleSize -= tempScaleSize * delta;
-//            tempScaleAlpha-=tempScaleAlpha*delta;
-//            tempScaleRotateDegree-=tempScaleRotateDegree*delta;
+            //根据实际滑动距离，计算二次缩放比例
+            float delta = offsetY % textHeight / textHeight;
+//            Log.e(TAG, i+"===111111onDraw: "+tempScaleSize);
+            if (i > 0) {
+                tempScaleSize -= tempScaleSize * delta;
+                tempScalePadding -= tempScalePadding * delta;
+                tempScaleAlpha -= tempScaleAlpha * delta;
+                tempScaleRotateDegree += tempScaleRotateDegree * delta;
+            } else if (i < 0) {
+                tempScaleSize += tempScaleSize * delta;
+                tempScalePadding += tempScalePadding * delta;
+                tempScaleAlpha += tempScaleAlpha * delta;
+                tempScaleRotateDegree -= tempScaleRotateDegree * delta;
+            }
+//            Log.e(TAG, i+"===222222onDraw: "+tempScaleSize);
+            //==========================================================
+            if (tempScaleSize < eachTextSize[maxShowNum - 1]) {
+                //小于最小值处理
+                tempScaleSize = eachTextSize[maxShowNum - 1];
+            }
+            if (tempScaleSize > eachTextSize[maxShowNum / 2]) {
+                //大于最大值处理
+                tempScaleSize = eachTextSize[maxShowNum / 2];
+            }
+            //==========================================================
+            if (tempScalePadding < eachTextPadding[maxShowNum - 1]) {
+                //小于最小值处理
+                tempScalePadding = eachTextPadding[maxShowNum - 1];
+            }
+            if (tempScalePadding > eachTextPadding[maxShowNum / 2]) {
+                //大于最大值处理
+                tempScalePadding = eachTextPadding[maxShowNum / 2];
+            }
+            
+            //==========================================================
+            if (tempScaleAlpha < eachTextAlpha[maxShowNum - 1]) {
+                //小于最小值处理
+                tempScaleAlpha = eachTextAlpha[maxShowNum - 1];
+            }
+            if (tempScaleAlpha > eachTextAlpha[maxShowNum / 2]) {
+                //大于最大值处理
+                tempScaleAlpha = eachTextAlpha[maxShowNum / 2];
+            }
+            
+            //==========================================================
+            if (tempScaleRotateDegree < eachTextRotate[maxShowNum - 1]) {
+                //小于最小值处理
+                tempScaleRotateDegree = eachTextRotate[maxShowNum - 1];
+            }
+            if (tempScaleRotateDegree > eachTextRotate[0]) {
+                //大于最大值处理
+                tempScaleRotateDegree = eachTextRotate[0];
+            }
+//            Log.e(TAG, i+"===333333onDraw: "+tempScaleSize);
             
             textPaint.setTextSize(tempScaleSize);
             textPaint.setAlpha((int) tempScaleAlpha);
@@ -234,7 +307,7 @@ public class WheelChooseView extends View {
             textPaintPre.setTextSize(tempScaleSizePre);
             
             String text = "";//默认绘制空文本，占位
-            int realIndex = i + currIndex;
+            int realIndex = i + currIndex - offsetIndex;
             if (realIndex >= 0 && realIndex < size) {
                 text = dataList.get(realIndex);
             }
@@ -245,14 +318,17 @@ public class WheelChooseView extends View {
             float fontHeightPre = fontMetricsPre.bottom - fontMetricsPre.top;
             
             if (i == -center) {
-                eachCenterYPre = (height - contentHeight) / 2f + tempScalePadding + fontHeight / 2f + offsetY;
+                eachCenterYPre = top + tempScalePadding + fontHeight / 2f;
 //                Log.e(TAG, "onDraw: " + eachCenterYPre + "#" + eachCenterYCurr);
                 eachCenterYCurr = eachCenterYPre;
             } else {
-                eachCenterYCurr = eachCenterYPre + tempScalePaddingPre + fontHeightPre / 2f + tempScalePadding + fontHeight / 2f + offsetY;
+                eachCenterYCurr = eachCenterYPre + tempScalePaddingPre + fontHeightPre / 2f + tempScalePadding + fontHeight / 2f;
 //                Log.e(TAG, "onDraw: " + eachCenterYPre + "#" + eachCenterYCurr);
                 eachCenterYPre = eachCenterYCurr;
             }
+            
+            eachCenterYCurr += offsetY % textHeight;
+            
             //baseLine计算参考：http://blog.csdn.net/harvic880925/article/details/50423762
             float baseline = eachCenterYCurr + (fontMetrics.bottom - fontMetrics.top) / 2f - fontMetrics.bottom;
             
@@ -288,17 +364,23 @@ public class WheelChooseView extends View {
             canvas.drawLine(0, y1, width, y1, linePaint);
             canvas.drawLine(0, y2, width, y2, linePaint);
         }
+        Paint p = new Paint(linePaint);
+        p.setColor(Color.YELLOW);
+        canvas.drawLine(0, top, width, top, p);
+        canvas.drawLine(0, top + contentHeight, width, top + contentHeight, p);
     }
     
     /**
      * 根据滑动距离，刷新视图
      */
     private void refreshView() {
-        postInvalidate();
+        //这里按照第一个元素的高度，当滑过这个高度时就认为偏移了一个元素
+        int i = (int) (offsetY / textHeight);
+        if (isRecycleMode || (currIndex - i >= 0 && currIndex - i < dataList.size())) {
+            offsetIndex = i;
+            postInvalidate();
+        }
     }
-    
-    private float mFirstY;
-    private float offsetY;
     
     @Override
     public boolean onTouchEvent(MotionEvent event) {
@@ -329,6 +411,11 @@ public class WheelChooseView extends View {
             float tempScalePadding = centerTextPadding - Math.abs(i) * (centerTextPadding - centerTextPadding / scaleTextPadding) / center;
             //计算textSize缩放等级
             float tempScaleSize = centerTextSize - Math.abs(i) * (centerTextSize - centerTextSize / scaleTextSize) / center;
+            //计算textAlpha缩放等级
+            float tempScaleAlpha = 255f - Math.abs(i) * (255f - 255f / scaleTextAlpha) / center;
+            //计算绕x轴旋转的角度
+            float tempScaleRotateDegree = -DEFAULT_MAX_ROTATE_DEGREE * i / center;
+            
             tp.setTextSize(tempScaleSize);
             Paint.FontMetrics fontMetrics = tp.getFontMetrics();
             eachTextHeight[i + center] = fontMetrics.bottom - fontMetrics.top + 2 * tempScalePadding;
@@ -336,7 +423,10 @@ public class WheelChooseView extends View {
             
             eachTextSize[i + center] = tempScaleSize;
             eachTextPadding[i + center] = tempScalePadding;
+            eachTextAlpha[i + center] = tempScaleAlpha;
+            eachTextRotate[i + center] = tempScaleRotateDegree;
         }
+        textHeight=eachTextHeight[0];
 //        Log.e(TAG, "calculateContentHeight: "+contentHeight );
     }
     
