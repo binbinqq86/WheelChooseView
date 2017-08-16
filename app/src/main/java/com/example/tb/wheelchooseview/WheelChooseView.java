@@ -93,6 +93,10 @@ public class WheelChooseView extends View {
      */
     private float[] eachTextPadding;
     /**
+     * 绘制文本y轴中心线集合
+     */
+    private float[] eachCenterY,eachCenterYTemp;
+    /**
      * 所有alpha集合
      */
     private float[] eachTextAlpha;
@@ -197,6 +201,8 @@ public class WheelChooseView extends View {
         eachTextHeight = new float[maxShowNum];
         eachTextAlpha = new float[maxShowNum];
         eachTextRotate = new float[maxShowNum];
+        eachCenterY = new float[maxShowNum];
+        eachCenterYTemp = new float[maxShowNum];
         calculateContentHeight();
         invalidate();
     }
@@ -220,6 +226,7 @@ public class WheelChooseView extends View {
         int center = maxShowNum / 2;
         float eachCenterYPre = 0f;
         float eachCenterYCurr = 0f;
+        float eachCenterYNext = 0f;
         TextPaint textPaintPre = new TextPaint(textPaint);
         for (int i = -center; i <= center; i++) {
             //开始绘制文本=====================================
@@ -299,38 +306,39 @@ public class WheelChooseView extends View {
             textPaint.setAlpha((int) tempScaleAlpha);
             
             //=======================计算baseLine===============================
-            int in = i == -center ? i : (i - 1);
-//            float tempScalePaddingPre = centerTextPadding - Math.abs(i - 1) * (centerTextPadding - centerTextPadding / scaleTextPadding) / (maxShowNum / 2);
-            float tempScalePaddingPre = eachTextPadding[in + center];
-//            float tempScaleSizePre = centerTextSize - Math.abs(i - 1) * (centerTextSize - centerTextSize / scaleTextSize) / (maxShowNum / 2);
-            float tempScaleSizePre = eachTextSize[in + center];
-            textPaintPre.setTextSize(tempScaleSizePre);
-            
-            String text = "";//默认绘制空文本，占位
-            int realIndex = i + currIndex - offsetIndex;
-            if (realIndex >= 0 && realIndex < size) {
-                text = dataList.get(realIndex);
-            }
             Paint.FontMetrics fontMetrics = textPaint.getFontMetrics();
-            float fontHeight = fontMetrics.bottom - fontMetrics.top;
-            
-            Paint.FontMetrics fontMetricsPre = textPaintPre.getFontMetrics();
-            float fontHeightPre = fontMetricsPre.bottom - fontMetricsPre.top;
-            
+//
             if (i == -center) {
-                eachCenterYPre = top + tempScalePadding + fontHeight / 2f;
-//                Log.e(TAG, "onDraw: " + eachCenterYPre + "#" + eachCenterYCurr);
+                eachCenterYPre = top + eachTextHeight[0] / 2f;
                 eachCenterYCurr = eachCenterYPre;
+                eachCenterYNext = eachCenterYCurr;
+//                Log.e(TAG, "onDraw: " + eachCenterYPre + "#" + eachCenterYCurr+"#"+eachCenterYNext);
             } else {
-                eachCenterYCurr = eachCenterYPre + tempScalePaddingPre + fontHeightPre / 2f + tempScalePadding + fontHeight / 2f;
-//                Log.e(TAG, "onDraw: " + eachCenterYPre + "#" + eachCenterYCurr);
+                eachCenterYCurr = eachCenterYPre + eachTextHeight[i + center - 1] / 2f + eachTextHeight[i + center] / 2f;
                 eachCenterYPre = eachCenterYCurr;
+                if (i < center) {
+                    eachCenterYNext = eachCenterYCurr + eachTextHeight[i + center] / 2f + eachTextHeight[i + center + 1] / 2f;
+                } else {
+                    eachCenterYNext = eachCenterYCurr;
+                }
+//                Log.e(TAG, "onDraw: " + eachCenterYPre + "#" + eachCenterYCurr+"#"+eachCenterYNext);
+            }
+            if (eachCenterY[i + center] == 0) {//只赋值一次
+                eachCenterY[i + center] = eachCenterYCurr;
+                eachCenterYTemp[i+center]=eachCenterYCurr;
             }
             
-            eachCenterYCurr += offsetY % textHeight;
-            
+            //用temp值去改变和处理绘制===============================
+            if (Math.abs(offsetY / textHeight) >= 1) {
+                //说明该变换位置了
+//                eachCenterYCurr = eachCenterYPre;
+            } else {
+            }
+            eachCenterYCurr += offsetY % textHeight;//此处会蹦，因为一下子变为0了，需要处理
+            eachCenterYTemp[i+center]=eachCenterYCurr;
+            Log.e(TAG, i + "===onDraw: " + eachCenterYCurr + "#" + offsetY % textHeight + "#" + eachCenterY[i + center]);
             //baseLine计算参考：http://blog.csdn.net/harvic880925/article/details/50423762
-            float baseline = eachCenterYCurr + (fontMetrics.bottom - fontMetrics.top) / 2f - fontMetrics.bottom;
+            float baseline = eachCenterYTemp[i+center] + (fontMetrics.bottom - fontMetrics.top) / 2f - fontMetrics.bottom;
             
             canvas.save();
             matrix.reset();
@@ -351,7 +359,13 @@ public class WheelChooseView extends View {
             matrix.postTranslate(centerX, eachCenterYCurr);
             
             canvas.concat(matrix);
-            canvas.drawText(text, width / 2, baseline, textPaint);
+            
+            String text = "";//默认绘制空文本，占位
+            int realIndex = i + currIndex - offsetIndex;
+            if (realIndex >= 0 && realIndex < size) {
+                text = dataList.get(realIndex);
+            }
+            canvas.drawText(text, width / 2, baseline, textPaint);//此处也可以改为图片选择器
             canvas.restore();
         }
         //绘制分割线
@@ -426,7 +440,7 @@ public class WheelChooseView extends View {
             eachTextAlpha[i + center] = tempScaleAlpha;
             eachTextRotate[i + center] = tempScaleRotateDegree;
         }
-        textHeight=eachTextHeight[0];
+        textHeight = eachTextHeight[0] - eachTextPadding[0];
 //        Log.e(TAG, "calculateContentHeight: "+contentHeight );
     }
     
