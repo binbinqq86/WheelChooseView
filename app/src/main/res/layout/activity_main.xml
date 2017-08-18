@@ -8,9 +8,8 @@
     android:gravity="center"
     tools:context="com.example.tb.wheelchooseview.MainActivity">
     
-    <com.example.tb.wheelchooseview.WheelChooseView
+    <com.example.tb.wheelchooseview.WheelChooseView2
         android:id="@+id/wcv"
-        android:background="#66345670"
         android:layout_width="match_parent"
         android:layout_height="300dp"/>
 
