@@ -71,7 +71,7 @@ public class WheelChooseView2 extends View {
     /**
      * 文字绕x轴最大旋转角度
      */
-    private static final float DEFAULT_MAX_ROTATE_DEGREE = 60f;
+    private static final float DEFAULT_MAX_ROTATE_DEGREE = 45f;
     /**
      * 默认字体大小，单位：sp
      */
@@ -204,8 +204,10 @@ public class WheelChooseView2 extends View {
             //区分中间跟边缘文本的颜色
             if (i == 0) {
                 textPaint.setColor(centerTextColor);
+                textPaint.setTextScaleX(1.1f);
             } else {
                 textPaint.setColor(otherTextColor);
+                textPaint.setTextScaleX(1.0f);
             }
             
             //计算绕x轴旋转的角度
