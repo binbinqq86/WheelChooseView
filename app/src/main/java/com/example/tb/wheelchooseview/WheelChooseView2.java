@@ -71,7 +71,7 @@ public class WheelChooseView2 extends View {
     /**
      * 文字绕x轴最大旋转角度
      */
-    private static final float DEFAULT_MAX_ROTATE_DEGREE = 45f;
+    private static final float DEFAULT_MAX_ROTATE_DEGREE = 60f;
     /**
      * 默认字体大小，单位：sp
      */
@@ -198,7 +198,7 @@ public class WheelChooseView2 extends View {
         canvas.clipRect(getPaddingLeft(), top, width - getPaddingRight(), top + contentHeight);
         
         int size = dataList.size();
-        int center = maxShowNum / 2;
+        int center = maxShowNum / 2 + 1;//上下多画出一个
         for (int i = -center; i <= center; i++) {
             //开始绘制文本=====================================
             //区分中间跟边缘文本的颜色
@@ -216,13 +216,11 @@ public class WheelChooseView2 extends View {
             
             //根据实际滑动距离，计算二次缩放比例
             float delta = offsetY % textHeight / textHeight;
-//            Log.e(TAG, i+"===111111onDraw: "+tempScaleSize);
             if (i > 0) {
                 tempScaleRotateDegree += tempScaleRotateDegree * delta;
             } else if (i < 0) {
                 tempScaleRotateDegree -= tempScaleRotateDegree * delta;
             }
-//            Log.e(TAG, i+"===222222onDraw: "+tempScaleSize);
             //==========================================================
             if (tempScaleRotateDegree < -DEFAULT_MAX_ROTATE_DEGREE) {
                 //小于最小值处理
@@ -232,19 +230,12 @@ public class WheelChooseView2 extends View {
                 //大于最大值处理
                 tempScaleRotateDegree = DEFAULT_MAX_ROTATE_DEGREE;
             }
-//            Log.e(TAG, i+"===333333onDraw: "+tempScaleSize);
             
             //=======================计算baseLine===============================
-            float eachCenterYCurr = top + textHeight / 2f + (i + center) * textHeight;
+//            float eachCenterYCurr = top + textHeight / 2f + (i + center) * textHeight;
+            float eachCenterYCurr = top - textHeight / 2f + (i + center) * textHeight;
             
-            //用temp值去改变和处理绘制===============================
-            if (Math.abs(offsetY / textHeight) >= 1) {
-                //说明该变换位置了
-//                eachCenterYCurr = eachCenterYPre;
-            } else {
-            }
             eachCenterYCurr += offsetY % textHeight;//此处会蹦，因为一下子变为0了，需要处理
-            Log.e(TAG, i + "===onDraw: " + eachCenterYCurr + "#" + offsetY % textHeight);
             //baseLine计算参考：http://blog.csdn.net/harvic880925/article/details/50423762
             Paint.FontMetrics fontMetrics = textPaint.getFontMetrics();
             float baseline = eachCenterYCurr + (fontMetrics.bottom - fontMetrics.top) / 2f - fontMetrics.bottom;
@@ -279,11 +270,8 @@ public class WheelChooseView2 extends View {
         }
         //绘制分割线
         if (hasSeparateLine) {
-            textPaint.setTextSize(centerTextSize);
-            Paint.FontMetrics cFontMetrics = textPaint.getFontMetrics();
-            float centerFontHeight = cFontMetrics.bottom - cFontMetrics.top;
-            float y1 = height / 2f - centerTextPadding - centerFontHeight / 2f;
-            float y2 = height / 2f + centerTextPadding + centerFontHeight / 2f;
+            float y1 = height / 2f - centerTextPadding - textHeight / 2f;
+            float y2 = height / 2f + centerTextPadding + textHeight / 2f;
             canvas.drawLine(0, y1, width, y1, linePaint);
             canvas.drawLine(0, y2, width, y2, linePaint);
         }
@@ -328,7 +316,6 @@ public class WheelChooseView2 extends View {
      * 根据滑动距离，刷新视图
      */
     private void refreshView() {
-        //这里按照第一个元素的高度，当滑过这个高度时就认为偏移了一个元素
         int i = (int) (offsetY / textHeight);
         if (isRecycleMode || (currIndex - i >= 0 && currIndex - i < dataList.size())) {
             offsetIndex = i;
